@@ -752,41 +752,48 @@
                 </div>
 
                 <script>
-                    // كائن التعامل مع البيانات المحدث ليعمل مع Firebase Realtime Database
-                    const DB = {
-                        // إرسال بيانات جديدة (مثل طلب جديد أو رسالة شات)
-                        push: (path, item) => {
-                            const reference = window.dbRef(window.db, path);
-                            return window.dbPush(reference, item);
-                        },
+        // كائن التعامل مع البيانات المحدث ليعمل مع Firebase Realtime Database
+        const DB = {
+            // إرسال بيانات جديدة (مثل طلب جديد أو رسالة شات)
+            push: (path, item) => {
+                const reference = window.dbRef(window.db, path);
+                return window.dbPush(reference, item);
+            },
 
-                        // تحديث بيانات موجودة (مثل تغيير حالة الطلب)
-                        update: (path, updates) => {
-                            const reference = window.dbRef(window.db, path);
-                            return window.dbUpdate(reference, updates);
-                        },
+            // تحديث بيانات موجودة (مثل تغيير حالة الطلب)
+            update: (path, updates) => {
+                const reference = window.dbRef(window.db, path);
+                return window.dbUpdate(reference, updates);
+            },
 
-                        // حذف بيانات
-                        remove: (path) => {
-                            const reference = window.dbRef(window.db, path);
-                            return window.dbRemove(reference);
-                        },
+            // حذف بيانات
+            remove: (path) => {
+                const reference = window.dbRef(window.db, path);
+                return window.dbRemove(reference);
+            },
 
-                        // الميزة الأهم: الاستماع للبيانات في الوقت الفعلي (Real-time)
-                        listen: (path, callback) => {
-                            const reference = window.dbRef(window.db, path);
-                            window.dbOnValue(reference, (snapshot) => {
-                                const data = snapshot.val() || {};
-                                callback(data);
-                            });
-                        }
-                    };
+            // الميزة الأهم: الاستماع للبيانات في الوقت الفعلي (Real-time)
+            listen: (path, callback) => {
+                const reference = window.dbRef(window.db, path);
+                window.dbOnValue(reference, (snapshot) => {
+                    const data = snapshot.val() || {};
+                    callback(data);
+                });
+            }
+        };
 
-                    // Initialize Defaults
-                    if(Object.keys(DB.get('users')).length === 0) {
+        // دالة مساعدة لجلب البيانات لمرة واحدة (عوضاً عن DB.get غير الموجودة)
+        const getStaticData = (path) => {
+            // سنعتمد على البيانات التي تم جلبها بالفعل في المستمعات (Listeners)
+            if (path === 'users') return window.allUsersData || {};
+            return {};
+        };
+
+        // Initialize Defaults
+                    if(Object.keys({}).length === 0) {
                         DB.set('users', { 'static_admin': { name: 'Admin', pass: '123', role: 'admin', online: true } });
                     }
-                    if(Object.keys(DB.get('categories')).length === 0) {
+                    if(Object.keys({}).length === 0) {
                         DB.push('categories', {name: 'سندوتشات سوري'});
                         DB.push('categories', {name: 'وجبات'});
                     }
@@ -809,23 +816,32 @@
                     document.getElementById('loginBtn').addEventListener('click', () => {
                         const u = document.getElementById('username').value.trim();
                         const p = document.getElementById('password').value.trim();
-                        const users = DB.get('users');
-                        let found = null;
-                        let foundKey = null;
 
-                        if(u === 'admin' && p === '123') found = {name: 'Admin', role: 'admin', key: 'static_admin'};
-                        else {
-                            Object.entries(users).forEach(([k, user]) => { 
-                                if(user.name === u && user.pass === p) { found = user; foundKey = k; }
-                            });
+                        // 1. الدخول الافتراضي (للمدير الأول)
+                        if (u === 'admin' && p === '123') {
+                            const adminUser = { name: 'Admin', role: 'admin', key: 'static_admin' };
+                            localStorage.setItem('sheikh_staff_user', JSON.stringify(adminUser));
+                            loginSuccess(adminUser);
+                            return;
                         }
 
-                        if(found) {
-                            found.key = foundKey || found.key;
+                        // 2. التحقق من الموظفين في Firebase
+                        let found = null;
+                        let users = window.allUsersData || {};
+                        
+                        Object.entries(users).forEach(([k, user]) => {
+                            if (user.name === u && user.pass === p) {
+                                found = { ...user, key: k };
+                            }
+                        });
+
+                        if (found) {
                             currentUser = found;
                             localStorage.setItem('sheikh_staff_user', JSON.stringify(found));
                             loginSuccess(found);
-                        } else alert('خطأ في البيانات');
+                        } else {
+                            alert('خطأ في اسم المستخدم أو كلمة المرور، أو انتظر لحظة لتحميل البيانات');
+                        }
                     });
 
                     function loginSuccess(user) {
@@ -855,39 +871,25 @@
                     }
 
                     function startSystem() {
-                        // مراقبة الطلبات: أي طلب جديد سيظهر فوراً عند المطبخ والإدارة
-                        DB.listen('orders', (data) => {
-                            allOrders = data;
-                            renderOrders(data);
-                            updateStats(data);
-                        });
+                        console.log("جاري تشغيل النظام والاتصال بالقاعدة...");
 
-                        // مراقبة الشات بين الموظفين
-                        DB.listen('team_chat', (data) => {
-                            renderTeamChat(data);
-                        });
-
-                        // مراقبة شات العملاء
-                        DB.listen('chats', (data) => {
-                            handleChatUpdate(data);
-                        });
-
-                        // مراقبة المنتجات (إذا قمت بتغيير سعر أو توفر منتج يتحدث عند العميل فوراً)
-                        DB.listen('products', (data) => {
-                            window.allProductsData = data;
-                            renderProdManage(data);
-                        });
-
-                        // مراقبة المستخدمين
+                        // مراقبة المستخدمين (مهمة جداً لعملية الدخول)
                         DB.listen('users', (data) => {
-                            allUsersData = data;
+                            window.allUsersData = data; // تخزين البيانات عالمياً
                             renderUsers(data);
+                            
+                            // إذا كانت القاعدة فارغة تماماً، أضف مستخدم أدمن تلقائي (اختياري)
+                            if (Object.keys(data).length === 0) {
+                                 console.log("قاعدة المستخدمين فارغة");
+                            }
                         });
 
-                        // مراقبة التصنيفات
-                        DB.listen('categories', (data) => {
-                            populateCats(data);
-                        });
+                        // بقية المستمعات كما هي
+                        DB.listen('orders', (data) => { allOrders = data; renderOrders(data); updateStats(data); });
+                        DB.listen('team_chat', (data) => { renderTeamChat(data); });
+                        DB.listen('chats', (data) => { handleChatUpdate(data); });
+                        DB.listen('products', (data) => { window.allProductsData = data; renderProdManage(data); });
+                        DB.listen('categories', (data) => { populateCats(data); });
                     }
 
                     // --- Team Chat ---
