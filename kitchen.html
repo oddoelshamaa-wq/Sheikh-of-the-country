@@ -79,12 +79,38 @@
             const prepList = document.getElementById('prepList');
             const alarm = document.getElementById('alarmSound');
             newList.innerHTML = ''; prepList.innerHTML = '';
-            let playAlarm = false;
-            Object.entries(allOrders).sort(([,a], [,b]) => b.timestamp - a.timestamp).forEach(([id, order]) => {
-                const card = `<div class="order-card ${order.status === 'pending' || order.status === 'new' ? 'priority' : ''}" onclick="window.openOrder('${id}')"><div class="ping"></div><div class="order-meta"><span>#${id.slice(-4)}</span><span>${new Date(order.timestamp).toLocaleTimeString('ar-EG')}</span></div><div class="cust-name">${order.customerName}</div><div class="order-items-preview">${order.items.map(i => i.name).join(' ، ')}</div><div style="font-weight:bold; color:var(--blue)">${order.total} ج.م</div></div>`;
-                if (order.status === 'pending' || order.status === 'new') { newList.innerHTML += card; if (!order.seenByKitchen) playAlarm = true; } else if (order.status === 'processing') { prepList.innerHTML += card; }
-            });
-            if (playAlarm) alarm.play().catch(() => {});
+
+            // متغير للتحكم في الصوت
+            let shouldPlaySound = false;
+
+            Object.entries(allOrders)
+                .sort(([,a], [,b]) => b.timestamp - a.timestamp)
+                .forEach(([id, order]) => {
+                    const card = `
+                        <div class="order-card ${order.status === 'pending' || order.status === 'new' ? 'priority' : ''}" onclick="window.openOrder('${id}')">
+                            <div class="ping"></div>
+                            <div class="order-meta"><span>#${id.slice(-4)}</span><span>${new Date(order.timestamp).toLocaleTimeString('ar-EG')}</span></div>
+                            <div class="cust-name">${order.customerName}</div>
+                            <div class="order-items-preview">${order.items.map(i => i.name).join(' ، ')}</div>
+                            <div style="font-weight:bold; color:var(--blue)">${order.total} ج.م</div>
+                        </div>`;
+
+                    if (order.status === 'pending' || order.status === 'new') {
+                        newList.innerHTML += card;
+                        // إذا لم يره المطبخ، شغل الصوت (بدون تحديث تلقائي)
+                        if (!order.seenByKitchen) shouldPlaySound = true;
+                    } else if (order.status === 'processing') {
+                        prepList.innerHTML += card;
+                    }
+                });
+
+            // التحكم في الصوت
+            if (shouldPlaySound) {
+                alarm.play().catch(() => {});
+            } else {
+                alarm.pause();
+                alarm.currentTime = 0;
+            }
         }
 
         window.openOrder = (id) => {
@@ -95,7 +121,13 @@
             document.getElementById('orderModal').style.display = 'flex';
         };
 
-        window.changeStatus = (id, status) => { window.updateOrder(id, { status: status }); document.getElementById('orderModal').style.display = 'none'; };
+        window.changeStatus = (id, status) => {
+            // إيقاف الصوت فوراً
+            const alarm = document.getElementById('alarmSound');
+            alarm.pause();
+            alarm.currentTime = 0;
+
+            window.updateOrder(id, { status: status }); document.getElementById('orderModal').style.display = 'none'; };
     </script>
 </body>
 </html>
