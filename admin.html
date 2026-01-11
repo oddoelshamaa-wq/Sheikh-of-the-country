@@ -473,28 +473,66 @@
         function renderOrders(data) {
             const n = document.getElementById('newOrdersList');
             const p = document.getElementById('processingOrdersList');
+            const alarm = document.getElementById('alarmSound');
             n.innerHTML = ''; p.innerHTML = '';
-            let hasNewOrder = false;
-            Object.entries(data).reverse().forEach(([k, o]) => {
+
+            // هذا المتغير سيحدد هل نشغل الصوت أم لا
+            let shouldPlaySound = false;
+
+            const sortedOrders = Object.entries(data).reverse();
+
+            sortedOrders.forEach(([k, o]) => {
                 const timeStr = new Date(o.timestamp).toLocaleTimeString('ar-EG', {hour:'2-digit', minute:'2-digit'});
-                const cardHtml = `<div class="order-card modern new-entry ${o.cancelRequest ? 'cancel-requested' : ''}" onclick="openOrder('${k}')">${o.cancelRequest ? '<span class="cancel-badge">طلب إلغاء!</span>' : ''}<div class="card-top"><span class="order-number">#${k.slice(-4)}</span><span class="order-time">${timeStr}</span></div><h4 class="cust-name">${o.customerName}</h4><div class="info-line"><i class="fas fa-phone-alt"></i> ${o.phone}</div><div class="info-line"><i class="fas fa-map-marker-alt"></i> ${o.address.substring(0,35)}...</div><div class="card-footer-modern"><span class="order-price-tag">${o.total} <small>ج</small></span><span class="btn-view">التفاصيل</span></div></div>`;
+                const cardHtml = `
+                    <div class="order-card modern new-entry ${o.cancelRequest ? 'cancel-requested' : ''}" onclick="openOrder('${k}')">
+                        ${o.cancelRequest ? '<span class="cancel-badge">طلب إلغاء!</span>' : ''}
+                        <div class="card-top"><span class="order-number">#${k.slice(-4)}</span><span class="order-time">${timeStr}</span></div>
+                        <h4 class="cust-name">${o.customerName}</h4>
+                        <div class="info-line"><i class="fas fa-phone-alt"></i> ${o.phone}</div>
+                        <div class="info-line"><i class="fas fa-map-marker-alt"></i> ${o.address.length > 35 ? o.address.substring(0,35)+'...' : o.address}</div>
+                        <div class="card-footer-modern"><span class="order-price-tag">${o.total} <small>ج</small></span><span class="btn-view">التفاصيل</span></div>
+                    </div>`;
+
                 if (o.status === 'pending' || o.status === 'new') {
                     n.innerHTML += cardHtml;
-                    if (!o.seenByAdmin) { hasNewOrder = true; window.DB.update('orders/' + k, { seenByAdmin: true }); }
-                } else if (o.status === 'processing') { p.innerHTML += cardHtml; }
+
+                    // التعديل هنا: إذا لم يتم فتح الطلب من قبل، شغل الصوت
+                    // (حذفنا كود التحديث التلقائي من هنا)
+                    if (!o.seenByAdmin) {
+                        shouldPlaySound = true;
+                    }
+                } else if (o.status === 'processing') {
+                    p.innerHTML += cardHtml;
+                }
             });
-            if (hasNewOrder) { const alarm = document.getElementById('alarmSound'); alarm.currentTime = 0; alarm.play().catch(() => {}); }
+
+            // تشغيل أو إيقاف الصوت بناءً على الحالة
+            if (shouldPlaySound) {
+                alarm.play().catch(() => { console.log("يحتاج تفاعل لتشغيل الصوت"); });
+            } else {
+                alarm.pause();
+                alarm.currentTime = 0;
+            }
         }
 
         window.openOrder = function(k) {
             const o = allOrders[k];
             if(!o) return;
+
+            // هام جداً: هنا نوقف الصوت ونبلغ النظام أننا رأينا الطلب
+            window.DB.update('orders/' + k, { seenByAdmin: true });
             let itemsHtml = (o.items || []).map(i => `<tr style="border-bottom: 1px dashed #ddd;"><td style="padding:10px;"><b style="color:#730101">${i.count}x</b> ${i.name}<br><small style="color:#666">${i.variant ? i.variant.bread : ''}</small></td><td style="text-align:left; padding:10px; font-weight:bold;">${i.variant ? i.variant.price : i.price} ج</td></tr>`).join('');
             document.getElementById('orderModal').innerHTML = `<div class="modal-content" style="max-width:550px"><div class="modal-header"><span style="font-weight:900; font-size:1.2rem;">رقم الطلب: #${k.slice(-4)}</span><i class="fas fa-utensils"></i></div><div class="modal-body-content" style="background: white; padding: 25px;">${o.status === 'cancelled' && o.adminReason ? `<div class="reason-box"><i class="fas fa-exclamation-circle"></i> سبب الإلغاء: ${o.adminReason}</div>` : ''}<div class="order-detail-card"><div style="font-size:1.1rem; margin-bottom:5px;"><b>العميل:</b> ${o.customerName}</div><div style="color:#666"><i class="fas fa-phone"></i> ${o.phone}</div><div style="color:#666"><i class="fas fa-map-marker-alt"></i> ${o.address}</div></div><table style="width:100%; margin:15px 0; border-collapse: collapse;">${itemsHtml}</table><div style="display:flex; justify-content:space-between; align-items:center; margin-top:20px; padding-top:15px; border-top:2px solid #730101"><span style="font-size:1.1rem; font-weight:bold;">الإجمالي الكلي:</span><span style="font-size:1.5rem; font-weight:900; color:#730101;">${o.total} ج.م</span></div><div style="display:flex; gap:10px; margin-top:25px;">${o.status === 'pending' || o.status === 'new' ? `<button class="btn-blue" style="background:#27ae60; flex:2; border:none;" onclick="upStatus('${k}','processing')">قبول وتجهيز</button><button class="btn-red" style="flex:1" onclick="rejectOrder('${k}')">رفض</button>` : ''}${o.status === 'processing' ? `<button class="btn-blue" style="background:#730101; color:#ffe755; width:100%;" onclick="upStatus('${k}','completed')">تم التوصيل (مكتمل)</button>` : ''}</div></div><button class="btn-close-modal" style="width:100%; padding:15px; background:#f1f1f1; border:none; border-radius: 0 0 20px 20px; cursor:pointer;" onclick="document.getElementById('orderModal').style.display='none'">إغلاق النافذة</button></div>`;
             document.getElementById('orderModal').style.display = 'flex';
         }
 
-        window.upStatus = (k,s) => { window.DB.update('orders/'+k, {status:s, handledBy:currentUser.name}); document.getElementById('orderModal').style.display='none'; }
+        window.upStatus = (k,s) => {
+            // إيقاف الصوت فوراً عند الضغط
+            const alarm = document.getElementById('alarmSound');
+            alarm.pause();
+            alarm.currentTime = 0;
+
+            window.DB.update('orders/'+k, {status:s, handledBy:currentUser.name}); document.getElementById('orderModal').style.display='none'; }
         window.rejectOrder = function(k) { let reason = prompt("اكتب سبب الرفض/الإلغاء:"); if(reason) { window.DB.update('orders/'+k, { status: 'cancelled', adminReason: reason, cancelRequest: false, handledBy:currentUser.name }); document.getElementById('orderModal').style.display = 'none'; } }
         
         // Stats
