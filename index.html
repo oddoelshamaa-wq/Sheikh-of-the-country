@@ -5,42 +5,68 @@
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
         <title>مطعم شيخ البلد | تجربة طعام فريدة</title>
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-        <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
+    <script type="module">
+        // 1. استيراد مكتبات فايبربيز عبر CDN (لا يحتاج تحميل)
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getDatabase, ref, set, push, onValue, update, remove } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
-        <!-- استدعاء مكتبات Firebase الأساسية -->
-        <script type="module">
-          import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-          import { getDatabase, ref, set, push, onValue, update, remove } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
-          import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-analytics.js";
+        // 2. إعداداتك الخاصة التي أرسلتها
+        const firebaseConfig = {
+          apiKey: "AIzaSyCYrGDMzUuQ1MiHmCy2OPId8yG07DyRT_g",
+          authDomain: "sheikh-of-the-country.firebaseapp.com",
+          projectId: "sheikh-of-the-country",
+          storageBucket: "sheikh-of-the-country.firebasestorage.app",
+          messagingSenderId: "767891906712",
+          appId: "1:767891906712:web:1ee97ae642db1eb77b70ed",
+          measurementId: "G-PLL1LDBRM1"
+        };
 
-          // إعدادات مشروعك التي أرفقتها
-          const firebaseConfig = {
-            apiKey: "AIzaSyCYrGDMzUuQ1MiHmCy2OPId8yG07DyRT_g",
-            authDomain: "sheikh-of-the-country.firebaseapp.com",
-            projectId: "sheikh-of-the-country",
-            storageBucket: "sheikh-of-the-country.firebasestorage.app",
-            messagingSenderId: "767891906712",
-            appId: "1:767891906712:web:1ee97ae642db1eb77b70ed",
-            measurementId: "G-PLL1LDBRM1"
-          };
+        // 3. تشغيل الفايربيز
+        const app = initializeApp(firebaseConfig);
+        const database = getDatabase(app);
 
-          // تهيئة Firebase
-          const app = initializeApp(firebaseConfig);
-          const db = getDatabase(app);
-          const analytics = getAnalytics(app);
+        // 4. استبدال محرك DB القديم بمحرك فايبربيز الحقيقي
+        // هذا الجزء سيجعل كل وظائفك القديمة (push, get, set) تعمل مع السحابة فوراً
+        window.DB = {
+            get: (path) => {
+                // سيتم جلب البيانات عبر المستمعين (onValue) لضمان السرعة
+                return JSON.parse(localStorage.getItem('sheikh_app_' + path) || '{}');
+            },
+            set: (path, val) => {
+                set(ref(database, path), val);
+            },
+            push: (path, item) => {
+                const newRef = push(ref(database, path));
+                set(newRef, item);
+                return { key: newRef.key };
+            },
+            update: (path, updates) => {
+                update(ref(database, path), updates);
+            },
+            remove: (path) => {
+                remove(ref(database, path));
+            }
+        };
 
-          // تصدير الأدوات لاستخدامها في بقية الكود
-          window.db = db;
-          window.dbRef = ref;
-          window.dbSet = set;
-          window.dbPush = push;
-          window.dbOnValue = onValue;
-          window.dbUpdate = update;
-          window.dbRemove = remove;
+        // 5. مزامنة البيانات تلقائياً (Real-time Sync)
+        const collections = ['products', 'categories', 'orders', 'chats', 'team_chat', 'users'];
+        collections.forEach(col => {
+            onValue(ref(database, col), (snapshot) => {
+                const data = snapshot.val() || {};
+                localStorage.setItem('sheikh_app_' + col, JSON.stringify(data));
+                // إطلاق حدث التحديث لكي تشعر الواجهة بالتغيير فوراً
+                window.dispatchEvent(new Event('db_updated'));
+                if (typeof refreshAll === 'function') refreshAll(); // للمدير
+                if (typeof renderOrders === 'function') renderOrders(); // للمطبخ
+                if (typeof refreshUI === 'function') refreshUI(); // للزبون
+            });
+        });
 
-          console.log("Firebase Connected Successfully! ✅");
-        </script>
-        <style>
+        // تأكد من تصدير الوظائف للـ window ليراها الـ HTML
+        // exports will be added at end of main script
+    </script>
+    <style>
         :root {
             --primary: #730101;    /* الأحمر الداكن */
             --secondary: #ffe755;   /* الأصفر الذهبي */
@@ -1100,36 +1126,7 @@
         </div>
 
         <script>
-            // دمج نفس المنطق البرمجي الخاص بك مع الواجهة الجديدة
-            // كائن التعامل مع البيانات المحدث ليعمل مع Firebase Realtime Database
-            const DB = {
-                // إرسال بيانات جديدة (مثل طلب جديد أو رسالة شات)
-                push: (path, item) => {
-                    const reference = window.dbRef(window.db, path);
-                    return window.dbPush(reference, item);
-                },
-
-                // تحديث بيانات موجودة (مثل تغيير حالة الطلب)
-                update: (path, updates) => {
-                    const reference = window.dbRef(window.db, path);
-                    return window.dbUpdate(reference, updates);
-                },
-
-                // حذف بيانات
-                remove: (path) => {
-                    const reference = window.dbRef(window.db, path);
-                    return window.dbRemove(reference);
-                },
-
-                // الميزة الأهم: الاستماع للبيانات في الوقت الفعلي (Real-time)
-                listen: (path, callback) => {
-                    const reference = window.dbRef(window.db, path);
-                    window.dbOnValue(reference, (snapshot) => {
-                        const data = snapshot.val() || {};
-                        callback(data);
-                    });
-                }
-            };
+            // Firebase DB is loaded in module script
 
         let cart = [];
         let currentUser = JSON.parse(localStorage.getItem('sheikh_user_info'));
@@ -1139,55 +1136,32 @@
         let currentQty = 1;
         let tempCoords = null;
 
-        function startSystem() {
-            // مراقبة الطلبات: أي طلب جديد سيظهر فوراً عند المطبخ والإدارة
-            DB.listen('orders', (data) => {
-                allOrders = data;
-                renderOrders(data); // دالة عرض الطلبات الحية
-                updateStats(data);  // دالة الإحصائيات
-            });
-
-            // مراقبة الشات بين الموظفين
-            DB.listen('team_chat', (data) => {
-                renderTeamChat(data);
-            });
-
-            // مراقبة شات العملاء
-            DB.listen('chats', (data) => {
-                handleChatUpdate(data);
-            });
-
-            // مراقبة المنتجات (إذا قمت بتغيير سعر أو توفر منتج يتحدث عند العميل فوراً)
-            DB.listen('products', (data) => {
-                window.allProductsData = data;
-                if(typeof renderProdManage === 'function') renderProdManage(data);
-                if(typeof loadProducts === 'function') loadProducts('all');
-            });
-        }
-
         function initData() {
-            // تهيئة منتجات افتراضية
-            const def = [
-                {name: "شاورما لحم سوبر", cat: "سندوتشات", img: "https://images.unsplash.com/photo-1633321702518-7feccaf0ad44?auto=format&fit=crop&w=400", available: true, variants: [{bread: "صاج عائلي", price: 95}, {bread: "فرنساوي", price: 80}]},
-                {name: "وجبة شيخ البلد", cat: "وجبات", img: "https://images.unsplash.com/photo-1555939594-58d7cb561ad1?auto=format&fit=crop&w=400", available: true, variants: [{bread: "ربع فرخة", price: 140}, {bread: "نص فرخة", price: 210}]},
-                {name: "حواوشي إسكندراني", cat: "سندوتشات", img: "https://images.unsplash.com/photo-1626074353765-517a681e40be?auto=format&fit=crop&w=400", available: true, variants: [{bread: "رغيف كامل", price: 70}]},
-                {name: "كوبيبة وسمبوسك", cat: "مقبلات", img: "https://images.unsplash.com/photo-1606331145362-ec76a636906a?auto=format&fit=crop&w=400", available: true, variants: [{bread: "طبق مشكل", price: 65}]}
-            ];
-            def.forEach(i => DB.push('products', i));
-            DB.push('categories', {name: "سندوتشات"});
-            DB.push('categories', {name: "وجبات"});
-            DB.push('categories', {name: "مقبلات"});
+            // تهيئة منتجات افتراضية إذا كانت السلة فارغة
+            if(Object.keys(DB.get('products')).length === 0) {
+                const def = [
+                    {name: "شاورما لحم سوبر", cat: "سندوتشات", img: "https://images.unsplash.com/photo-1633321702518-7feccaf0ad44?auto=format&fit=crop&w=400", available: true, variants: [{bread: "صاج عائلي", price: 95}, {bread: "فرنساوي", price: 80}]},
+                    {name: "وجبة شيخ البلد", cat: "وجبات", img: "https://images.unsplash.com/photo-1555939594-58d7cb561ad1?auto=format&fit=crop&w=400", available: true, variants: [{bread: "ربع فرخة", price: 140}, {bread: "نص فرخة", price: 210}]},
+                    {name: "حواوشي إسكندراني", cat: "سندوتشات", img: "https://images.unsplash.com/photo-1626074353765-517a681e40be?auto=format&fit=crop&w=400", available: true, variants: [{bread: "رغيف كامل", price: 70}]},
+                    {name: "كوبيبة وسمبوسك", cat: "مقبلات", img: "https://images.unsplash.com/photo-1606331145362-ec76a636906a?auto=format&fit=crop&w=400", available: true, variants: [{bread: "طبق مشكل", price: 65}]}
+                ];
+                def.forEach(i => DB.push('products', i));
+                DB.push('categories', {name: "سندوتشات"});
+                DB.push('categories', {name: "وجبات"});
+                DB.push('categories', {name: "مقبلات"});
+            }
         }
 
         function refreshUI() {
-            const cats = Object.values(window.allProductsData || {});
+            products = Object.values(DB.get('products'));
+            const cats = Object.values(DB.get('categories'));
             const nav = document.getElementById('categoryNav');
-
+            
             nav.innerHTML = '<div class="cat-pill active" onclick="filterCat(\'all\',this)">الكل</div>';
             cats.forEach(c => {
                 nav.innerHTML += `<div class="cat-pill" onclick="filterCat('${c.name}',this)">${c.name}</div>`;
             });
-
+            
             loadProducts('all');
             if(currentUser) setupUserUI();
         }
@@ -1476,6 +1450,11 @@
         };
 
         window.addEventListener('db_updated', refreshUI);
+
+        // Export functions to window
+        window.submitOrder = submitOrder;
+        window.openOrder = openOrder;
+        window.upStatus = upStatus;
     </script>
 </body>
 </html>
