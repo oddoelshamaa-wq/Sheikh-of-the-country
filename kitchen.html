@@ -66,10 +66,7 @@
         const app = initializeApp(firebaseConfig);
         const database = getDatabase(app);
 
-        // Global Helper for updating specific order path in Firebase
-        window.updateOrder = (id, updates) => {
-            update(ref(database, 'orders/' + id), updates);
-        };
+        window.updateOrder = (id, updates) => { update(ref(database, 'orders/' + id), updates); };
 
         onValue(ref(database, 'orders'), (snapshot) => {
             const data = snapshot.val() || {};
@@ -83,51 +80,22 @@
             const alarm = document.getElementById('alarmSound');
             newList.innerHTML = ''; prepList.innerHTML = '';
             let playAlarm = false;
-
-            Object.entries(allOrders)
-                .sort(([,a], [,b]) => b.timestamp - a.timestamp)
-                .forEach(([id, order]) => {
-                    const card = `
-                        <div class="order-card ${order.status === 'pending' || order.status === 'new' ? 'priority' : ''}" onclick="window.openOrder('${id}')">
-                            <div class="ping"></div>
-                            <div class="order-meta"><span>#${id.slice(-4)}</span><span>${new Date(order.timestamp).toLocaleTimeString('ar-EG')}</span></div>
-                            <div class="cust-name">${order.customerName}</div>
-                            <div class="order-items-preview">${order.items.map(i => i.name).join(' ، ')}</div>
-                            <div style="font-weight:bold; color:var(--blue)">${order.total} ج.م</div>
-                        </div>`;
-                    
-                    if (order.status === 'pending' || order.status === 'new') {
-                        newList.innerHTML += card;
-                        if (!order.seenByKitchen) playAlarm = true;
-                    } else if (order.status === 'processing') {
-                        prepList.innerHTML += card;
-                    }
-                });
-
+            Object.entries(allOrders).sort(([,a], [,b]) => b.timestamp - a.timestamp).forEach(([id, order]) => {
+                const card = `<div class="order-card ${order.status === 'pending' || order.status === 'new' ? 'priority' : ''}" onclick="window.openOrder('${id}')"><div class="ping"></div><div class="order-meta"><span>#${id.slice(-4)}</span><span>${new Date(order.timestamp).toLocaleTimeString('ar-EG')}</span></div><div class="cust-name">${order.customerName}</div><div class="order-items-preview">${order.items.map(i => i.name).join(' ، ')}</div><div style="font-weight:bold; color:var(--blue)">${order.total} ج.م</div></div>`;
+                if (order.status === 'pending' || order.status === 'new') { newList.innerHTML += card; if (!order.seenByKitchen) playAlarm = true; } else if (order.status === 'processing') { prepList.innerHTML += card; }
+            });
             if (playAlarm) alarm.play().catch(() => {});
         }
 
         window.openOrder = (id) => {
             const order = JSON.parse(localStorage.getItem('sheikh_app_orders'))[id];
-            window.updateOrder(id, { seenByKitchen: true }); // Stop alarm
-            
+            window.updateOrder(id, { seenByKitchen: true });
             const content = document.getElementById('modalContent');
-            content.innerHTML = `
-                <div class="modal-header"><h2>طلب #${id.slice(-4)}</h2><p>${order.customerName}</p></div>
-                <div class="modal-body">
-                    <div style="margin-bottom:15px; border-bottom:1px solid #eee;"><strong>العنوان:</strong> ${order.address}</div>
-                    ${order.items.map(i => `<div class="item-row"><span>${i.count}x <strong>${i.name}</strong> <small>${i.variant?i.variant.bread:''}</small></span><span>${i.variant?i.variant.price:i.price} ج</span></div>`).join('')}
-                    <h2 style="text-align:center; color:var(--red);">${order.total} ج</h2>
-                    ${(order.status==='pending'||order.status==='new') ? `<button class="btn-action btn-accept" onclick="window.changeStatus('${id}', 'processing')">بدء التحضير</button>` : `<button class="btn-action btn-done" onclick="window.changeStatus('${id}', 'completed')">تم التحضير - تسليم</button>`}
-                    <button class="btn-action btn-cancel" onclick="document.getElementById('orderModal').style.display='none'">إغلاق</button>
-                </div>`;
+            content.innerHTML = `<div class="modal-header"><h2>طلب #${id.slice(-4)}</h2><p>${order.customerName}</p></div><div class="modal-body"><div style="margin-bottom:15px; border-bottom:1px solid #eee;"><strong>العنوان:</strong> ${order.address}</div>${order.items.map(i => `<div class="item-row"><span>${i.count}x <strong>${i.name}</strong> <small>${i.variant?i.variant.bread:''}</small></span><span>${i.variant?i.variant.price:i.price} ج</span></div>`).join('')}<h2 style="text-align:center; color:var(--red);">${order.total} ج</h2>${(order.status==='pending'||order.status==='new') ? `<button class="btn-action btn-accept" onclick="window.changeStatus('${id}', 'processing')">بدء التحضير</button>` : `<button class="btn-action btn-done" onclick="window.changeStatus('${id}', 'completed')">تم التحضير - تسليم</button>`}<button class="btn-action btn-cancel" onclick="document.getElementById('orderModal').style.display='none'">إغلاق</button></div>`;
             document.getElementById('orderModal').style.display = 'flex';
         };
 
-        window.changeStatus = (id, status) => {
-            window.updateOrder(id, { status: status });
-            document.getElementById('orderModal').style.display = 'none';
-        };
+        window.changeStatus = (id, status) => { window.updateOrder(id, { status: status }); document.getElementById('orderModal').style.display = 'none'; };
     </script>
 </body>
 </html>
