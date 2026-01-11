@@ -87,9 +87,125 @@
         .nav-item.active { color: var(--primary); }
         .nav-item i { font-size: 1.5rem; transition: 0.3s; }
         .cart-badge-nav { position: absolute; top: -5px; right: 25%; background: #e11d48; color: white; font-size: 0.7rem; padding: 2px 7px; border-radius: 10px; border: 2px solid white; font-weight: 900; }
-        .profile-card { text-align: center; padding: 20px; }
-        .profile-info-row { background: #f8fafc; padding: 15px; border-radius: 15px; margin-bottom: 10px; display: flex; align-items: center; gap: 15px; border-right: 4px solid var(--brand-red); }
-        .profile-info-row i { color: var(--brand-red); font-size: 1.2rem; }
+/* تصميم هيدر البروفايل (الجزء الأحمر العلوي) */
+.profile-header-visual {
+    background: linear-gradient(135deg, var(--primary) 0%, #4a0000 100%);
+    padding: 40px 20px 30px;
+    border-radius: 0 0 50% 50%; /* انحناء من الأسفل */
+    margin: -30px -25px 25px; /* تمديد للأطراف */
+    text-align: center;
+    color: var(--accent);
+    box-shadow: 0 10px 25px rgba(115, 1, 1, 0.2);
+    position: relative;
+}
+
+/* دائرة الصورة الشخصية */
+.profile-avatar-large {
+    width: 90px; height: 90px;
+    background: var(--white);
+    border: 4px solid var(--accent);
+    border-radius: 50%;
+    display: inline-flex; justify-content: center; align-items: center;
+    font-size: 3rem; color: var(--primary);
+    margin-bottom: 10px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+}
+
+.profile-user-title {
+    font-size: 1.5rem;
+    font-weight: 900;
+    color: var(--white);
+    margin: 0;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+/* كروت المعلومات (الاسم، الهاتف، العنوان) */
+.profile-detail-row {
+    display: flex; align-items: center; gap: 15px;
+    background: white;
+    padding: 15px 20px;
+    border-radius: 20px;
+    margin-bottom: 15px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.03);
+    border: 1px solid #f1f5f9;
+    transition: 0.3s;
+    position: relative;
+    overflow: hidden;
+}
+
+.profile-detail-row:hover {
+    transform: translateY(-3px);
+    border-color: var(--accent);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.05);
+}
+
+/* الشريط الجانبي الملون للكارت */
+.profile-detail-row::before {
+    content: ''; position: absolute; right: 0; top: 0; height: 100%;
+    width: 6px; background: var(--primary);
+    border-radius: 0 5px 5px 0;
+}
+
+.profile-icon-box {
+    width: 45px; height: 45px;
+    background: #fff8e1; /* أصفر فاتح */
+    color: var(--primary);
+    border-radius: 12px;
+    display: flex; justify-content: center; align-items: center;
+    font-size: 1.2rem;
+}
+
+.profile-text-group { flex: 1; text-align: right; }
+.profile-label { font-size: 0.75rem; color: #94a3b8; display: block; margin-bottom: 2px; font-weight: 700; }
+.profile-value { font-size: 1.1rem; font-weight: 800; color: #1e293b; }
+
+/* زر الخروج بتصميم جديد */
+.btn-logout-modern {
+    background: #fee2e2; /* أحمر فاتح جداً */
+    color: #b91c1c;
+    width: 100%; padding: 18px;
+    border: none; border-radius: 20px;
+    font-weight: 800; font-size: 1.1rem;
+    margin-top: 20px; cursor: pointer;
+    display: flex; justify-content: center; align-items: center; gap: 10px;
+    transition: 0.3s;
+}
+
+.btn-logout-modern:hover {
+    background: #b91c1c;
+    color: white;
+    box-shadow: 0 10px 20px rgba(185, 28, 28, 0.3);
+}
+
+/* تصميم زر الإغلاق (X) */
+.btn-close-x {
+    position: absolute;
+    top: 20px;
+    left: 20px; /* مكان الزر على اليسار */
+    width: 35px;
+    height: 35px;
+    background: #f1f5f9; /* لون خلفية رمادي فاتح */
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    color: #64748b;
+    font-size: 1.1rem;
+    transition: all 0.3s ease;
+    z-index: 20; /* عشان يظهر فوق أي حاجة */
+    box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+}
+
+.btn-close-x:hover {
+    background: #fee2e2; /* خلفية حمراء فاتحة عند اللمس */
+    color: #ef4444;      /* الأيقونة تحمر */
+    transform: rotate(90deg) scale(1.1); /* يلف ويكبر شوية */
+}
+
+.profile-card { text-align: center; padding: 20px; }
+.profile-info-row { background: #f8fafc; padding: 15px; border-radius: 15px; margin-bottom: 10px; display: flex; align-items: center; gap: 15px; border-right: 4px solid var(--brand-red); }
+.profile-info-row i { color: var(--brand-red); font-size: 1.2rem; }
     </style>
 </head>
 <body>
@@ -179,8 +295,15 @@
     
     <div class="modal" id="cartModal">
         <div class="modal-content">
-            <div class="close-handle" onclick="closeModal('cartModal')"></div>
-            <div class="cart-header-ui"><h2><i class="fas fa-shopping-basket"></i> سلة المشتريات</h2></div>
+            <!-- زر الإغلاق الجديد -->
+            <div class="btn-close-x" onclick="closeModal('cartModal')">
+                <i class="fas fa-times"></i>
+            </div>
+
+            <div class="cart-header-ui">
+                <h2><i class="fas fa-shopping-basket"></i> سلة المشتريات</h2>
+            </div>
+            <!-- باقي الكود كما هو ... -->
             <div id="cartItems" style="max-height: 350px; overflow-y: auto; padding: 5px;"></div>
             <div class="cart-summary">
                 <div class="summary-row"><span>عدد الأصناف</span><span id="itemsCount">0</span></div>
@@ -201,8 +324,12 @@
 
     <div class="modal" id="ordersModal">
         <div class="modal-content" style="max-height: 80vh;">
-            <div class="close-handle" onclick="closeModal('ordersModal')"></div>
-            <h2 style="text-align:center; margin-bottom: 20px;">تاريخ طلباتك</h2>
+            <!-- زر الإغلاق الجديد -->
+            <div class="btn-close-x" onclick="closeModal('ordersModal')">
+                <i class="fas fa-times"></i>
+            </div>
+
+            <h2 style="text-align:center; margin-bottom: 20px; margin-top: 10px;">تاريخ طلباتك</h2>
             <div id="ordersList" style="overflow-y: auto;"></div>
         </div>
     </div>
@@ -210,9 +337,13 @@
     <div class="modal" id="profileModal">
         <div class="modal-content">
             <div class="close-handle" onclick="closeModal('profileModal')"></div>
+            <!-- هذا السطر (h2) سيتم إخفاؤه تلقائياً بواسطة الكود الجديد لكي لا يتكرر العنوان -->
             <h2 style="text-align:center; color: var(--brand-red);">ملفي الشخصي</h2>
-            <div id="profileDetails" class="profile-card"></div>
-            <button class="btn-action" style="background:#ccc; color:black; box-shadow:none;" onclick="logoutUser()">تسجيل الخروج</button>
+
+            <!-- هنا تأكد أن الـ padding صفر لكي يلتصق الهيدر بالحواف -->
+            <div id="profileDetails" class="profile-card" style="padding: 0;"></div>
+
+            <!-- احذف زر الخروج القديم من هنا لأننا وضعناه داخل الجافاسكريبت -->
         </div>
     </div>
 
@@ -350,9 +481,64 @@
         
         window.openProfile = function() {
             if(!currentUser) return openAuth();
+
             const details = document.getElementById('profileDetails');
-            details.innerHTML = `<div class="profile-info-row"><i class="fas fa-user"></i><div style="text-align:right"><small style="display:block; color:#94a3b8">الاسم</small><b>${currentUser.name}</b></div></div><div class="profile-info-row"><i class="fas fa-phone"></i><div style="text-align:right"><small style="display:block; color:#94a3b8">رقم الهاتف</small><b>${currentUser.phone}</b></div></div><div class="profile-info-row"><i class="fas fa-map-marker-alt"></i><div style="text-align:right"><small style="display:block; color:#94a3b8">العنوان</small><b>${currentUser.address}</b></div></div>`;
+
+            // هنا نضع التصميم الجديد (HTML) داخل المودال
+            details.innerHTML = `
+                <!-- الجزء العلوي المنحني -->
+                <div class="profile-header-visual">
+                    <div class="profile-avatar-large">
+                        <i class="fas fa-user-tie"></i>
+                    </div>
+                    <h3 class="profile-user-title">${currentUser.name}</h3>
+                    <div style="font-size: 0.9rem; opacity: 0.8; margin-top:5px;">عميل مميز 🌟</div>
+                </div>
+
+                <!-- محتوى المعلومات -->
+                <div style="padding: 10px 20px;">
+
+                    <div class="profile-detail-row">
+                        <div class="profile-icon-box"><i class="fas fa-phone-alt"></i></div>
+                        <div class="profile-text-group">
+                            <span class="profile-label">رقم الهاتف</span>
+                            <span class="profile-value">${currentUser.phone}</span>
+                        </div>
+                    </div>
+
+                    <div class="profile-detail-row">
+                        <div class="profile-icon-box"><i class="fas fa-map-marker-alt"></i></div>
+                        <div class="profile-text-group">
+                            <span class="profile-label">عنوان التوصيل</span>
+                            <span class="profile-value">${currentUser.address}</span>
+                        </div>
+                    </div>
+
+                    <div class="profile-detail-row">
+                        <div class="profile-icon-box"><i class="fas fa-city"></i></div>
+                        <div class="profile-text-group">
+                            <span class="profile-label">المنطقة</span>
+                            <span class="profile-value">${currentUser.zone || 'غير محدد'}</span>
+                        </div>
+                    </div>
+
+                    <button class="btn-logout-modern" onclick="logoutUser()">
+                        <i class="fas fa-sign-out-alt"></i> تسجيل الخروج
+                    </button>
+                </div>
+            `;
+
+            // إخفاء العنوان القديم "ملفي الشخصي" لأننا وضعنا هيدر جديد
+            // (تعديل بسيط في الـ HTML لإخفاء العنوان القديم عند الفتح)
+            document.querySelector('#profileModal h2').style.display = 'none';
+
+            // إخفاء زر الإغلاق القديم لكي لا يتكرر
+            // سنعرض المودال الآن
             document.getElementById('profileModal').style.display = 'flex';
+
+            // إخفاء العنوان القديم "ملفي الشخصي" لأننا وضعنا هيدر جديد
+            // (تعديل بسيط في الـ HTML لإخفاء العنوان القديم عند الفتح)
+            document.querySelector('#profileModal h2').style.display = 'none';
         }
 
         window.logoutUser = function() { if(confirm('هل تريد تسجيل الخروج؟')) { localStorage.removeItem('sheikh_user_info'); location.reload(); } }
