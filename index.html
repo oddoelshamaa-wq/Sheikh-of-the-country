@@ -281,7 +281,11 @@
             nav.innerHTML = '<div class="cat-pill active" onclick="filterCat(\'all\',this)">الكل</div>';
             cats.forEach(c => { nav.innerHTML += `<div class="cat-pill" onclick="filterCat('${c.name}',this)">${c.name}</div>`; });
             loadProducts('all');
-            if(currentUser) setupUserUI();
+            
+            if(currentUser) {
+                setupUserUI();
+                renderChatWindow(); // <--- أضف هذا السطر هنا
+            }
         }
 
         function loadProducts(c) {
@@ -382,13 +386,78 @@
             btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري تحديد موقعك...';
             navigator.geolocation.getCurrentPosition((pos) => { tempCoords = { lat: pos.coords.latitude, lng: pos.coords.longitude }; document.getElementById('regAddress').value = "تم تحديد الموقع بدقة عبر GPS ✅"; btn.style.background = "#059669"; btn.innerHTML = '<i class="fas fa-check"></i> تم التحديد بنجاح'; }, () => { alert("عذراً، لم نتمكن من الوصول لموقعك"); btn.innerHTML = '<i class="fas fa-location-arrow"></i> حاول مرة أخرى'; });
         }
-        window.toggleChat = function() { const w = document.getElementById('chatWindow'); w.style.display = w.style.display === 'none' ? 'flex' : 'none'; }
         window.sendChat = function() {
             const input = document.getElementById('chatInput');
-            if(input.value.trim()) {
-                const body = document.getElementById('chatBody');
-                body.innerHTML += `<div style="background:var(--primary); color:white; padding:10px 15px; border-radius:15px 15px 0 15px; align-self:flex-end; max-width:80%;">${input.value}</div>`;
-                input.value = ''; body.scrollTop = body.scrollHeight;
+            const txt = input.value.trim();
+
+            // 1. التأكد من أن المستخدم مسجل دخول
+            if (!currentUser) {
+                alert("من فضلك سجل بياناتك أولاً لكي نتمكن من الرد عليك");
+                toggleChat(); // إغلاق الشات
+                openAuth();   // فتح نافذة التسجيل
+                return;
+            }
+
+            if(txt) {
+                // 2. جلب المحادثات الحالية من قاعدة البيانات
+                const allChats = window.DB.get('chats') || {};
+                const userPhone = currentUser.phone; // نستخدم رقم الهاتف كمعرف
+
+                // إنشاء محادثة جديدة لهذا الرقم لو لم تكن موجودة
+                if (!allChats[userPhone]) {
+                    allChats[userPhone] = {};
+                }
+
+                // 3. تجهيز بيانات الرسالة
+                const msgId = 'msg_' + Date.now();
+                allChats[userPhone][msgId] = {
+                    sender: 'customer', // المرسل هو الزبون
+                    name: currentUser.name,
+                    text: txt,
+                    timestamp: Date.now()
+                };
+
+                // 4. الحفظ في قاعدة البيانات (هذا هو السطر الذي كان ينقصك)
+                window.DB.set('chats', allChats);
+
+                // تنظيف الخانة
+                input.value = '';
+                
+                // تحديث الشاشة فوراً
+                renderChatWindow();
+            }
+        }
+        window.renderChatWindow = function() {
+            if (!currentUser) return; // لو مش مسجل دخول مفيش شات
+
+            const body = document.getElementById('chatBody');
+            body.innerHTML = ''; // مسح الشاشة للتحميل من جديد
+            
+            // جلب الرسائل الخاصة بهذا الرقم فقط
+            const allChats = window.DB.get('chats') || {};
+            const myMsgs = allChats[currentUser.phone] || {};
+
+            // ترتيب الرسائل وعرضها
+            Object.values(myMsgs).sort((a,b) => a.timestamp - b.timestamp).forEach(m => {
+                const isMe = m.sender === 'customer';
+                // تصميم الرسالة (حمراء لي وبيضاء للأدمن)
+                const style = isMe 
+                    ? "background:var(--primary); color:white; padding:10px 15px; border-radius:15px 15px 0 15px; align-self:flex-end; max-width:80%; margin-bottom:5px;" 
+                    : "background:#e2e8f0; color:#333; padding:10px 15px; border-radius:15px 15px 15px 0; align-self:flex-start; max-width:80%; margin-bottom:5px;";
+                
+                body.innerHTML += `<div style="${style}">${m.text}</div>`;
+            });
+            
+            // النزول لآخر رسالة
+            body.scrollTop = body.scrollHeight;
+        }
+        window.toggleChat = function() { 
+            const w = document.getElementById('chatWindow'); 
+            const isOpen = w.style.display === 'flex';
+            w.style.display = isOpen ? 'none' : 'flex';
+            
+            if (!isOpen && currentUser) {
+                renderChatWindow(); // تحميل الرسائل عند الفتح
             }
         }
 
