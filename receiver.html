@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>شاشة استلام الطلبات - شيخ البلد</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap" rel="stylesheet">
+
+    <!-- استدعاء مكتبات Firebase الأساسية -->
+    <script type="module">
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+      import { getDatabase, ref, set, push, onValue, update, remove } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+      import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-analytics.js";
+
+      // إعدادات مشروعك التي أرفقتها
+      const firebaseConfig = {
+        apiKey: "AIzaSyCYrGDMzUuQ1MiHmCy2OPId8yG07DyRT_g",
+        authDomain: "sheikh-of-the-country.firebaseapp.com",
+        projectId: "sheikh-of-the-country",
+        storageBucket: "sheikh-of-the-country.firebasestorage.app",
+        messagingSenderId: "767891906712",
+        appId: "1:767891906712:web:1ee97ae642db1eb77b70ed",
+        measurementId: "G-PLL1LDBRM1"
+      };
+
+      // تهيئة Firebase
+      const app = initializeApp(firebaseConfig);
+      const db = getDatabase(app);
+      const analytics = getAnalytics(app);
+
+      // تصدير الأدوات لاستخدامها في بقية الكود
+      window.db = db;
+      window.dbRef = ref;
+      window.dbSet = set;
+      window.dbPush = push;
+      window.dbOnValue = onValue;
+      window.dbUpdate = update;
+      window.dbRemove = remove;
+
+      console.log("Firebase Connected Successfully! ✅");
+    </script>
+    <style>
+        :root { --blue: #18248b; --red: #8c0104; --white: #ffffff; --green: #27ae60; --gray: #f4f7f6; }
+        body { font-family: 'Cairo', sans-serif; background: var(--gray); margin: 0; padding: 20px; overflow-x: hidden; }
+
+        /* Header */
+        .header { background: var(--blue); color: white; padding: 15px 25px; border-radius: 15px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); border-bottom: 5px solid var(--red); }
+        .header h1 { margin: 0; font-size: 1.5rem; }
+        .status-badge { background: rgba(255,255,255,0.2); padding: 5px 15px; border-radius: 20px; font-size: 0.9rem; }
+
+        /* Columns Layout */
+        .orders-container { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; height: calc(100vh - 120px); }
+        .column { background: #ebedef; border-radius: 20px; padding: 15px; display: flex; flex-direction: column; }
+        .column-header { padding: 15px; border-radius: 12px; margin-bottom: 15px; color: white; font-weight: bold; text-align: center; font-size: 1.2rem; display: flex; align-items: center; justify-content: center; gap: 10px; }
+        .new-header { background: var(--red); }
+        .prep-header { background: var(--blue); }
+
+        .orders-list { flex: 1; overflow-y: auto; padding-right: 5px; }
+
+        /* Order Card */
+        .order-card { background: white; border-radius: 15px; padding: 18px; margin-bottom: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border-right: 8px solid #ccc; cursor: pointer; transition: 0.3s; position: relative; animation: slideIn 0.3s ease-out; }
+        .order-card:hover { transform: scale(1.02); }
+        .order-card.priority { border-right-color: var(--red); animation: pulse-border 1.5s infinite; }
+        @keyframes pulse-border { 0% { box-shadow: 0 0 0px rgba(140, 1, 4, 0); } 50% { box-shadow: 0 0 15px rgba(140, 1, 4, 0.3); } 100% { box-shadow: 0 0 0px rgba(140, 1, 4, 0); } }
+
+        .order-meta { display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 0.85rem; color: #666; }
+        .cust-name { font-size: 1.2rem; font-weight: 800; color: #1e293b; margin: 5px 0; }
+        .order-items-preview { font-size: 0.95rem; color: #475569; background: #f8fafc; padding: 10px; border-radius: 8px; margin: 10px 0; }
+        
+        /* Modal */
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 1000; justify-content: center; align-items: center; backdrop-filter: blur(5px); }
+        .modal-content { background: white; width: 90%; max-width: 500px; border-radius: 20px; overflow: hidden; animation: popUp 0.3s; }
+        .modal-header { background: var(--blue); color: white; padding: 20px; text-align: center; position: relative; }
+        .modal-body { padding: 20px; }
+        .item-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px dashed #eee; }
+
+        .btn-action { width: 100%; padding: 15px; border: none; border-radius: 10px; font-size: 1.1rem; font-weight: bold; cursor: pointer; margin-top: 10px; transition: 0.3s; }
+        .btn-accept { background: var(--green); color: white; }
+        .btn-done { background: var(--blue); color: white; }
+        .btn-cancel { background: #eee; color: #333; }
+
+        @keyframes slideIn { from { opacity: 0; transform: translateX(30px); } to { opacity: 1; transform: translateX(0); } }
+        @keyframes popUp { from { transform: scale(0.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+        /* Notification Badge */
+        .ping { position: absolute; top: -5px; right: -5px; height: 15px; width: 15px; background: var(--red); border-radius: 50%; border: 2px solid white; display: none; }
+        .priority .ping { display: block; }
+    </style>
+</head>
+<body>
+
+    <audio id="alarmSound" src="https://assets.mixkit.co/active_storage/sfx/995/995-preview.mp3" loop></audio>
+
+    <div class="header">
+        <h1><img src="792c5d7f-7b45-4e3f-9333-c69926ecaa3f (1).jpg" alt="شيخ البلد" style="width:40px; height:40px; object-fit:cover; border-radius:10px; margin-left:10px;"> مطبخ شيخ البلد - استلام الطلبات</h1>
+        <div class="status-badge"><i class="fas fa-circle" style="color: #2ecc71;"></i> متصل ومستعد</div>
+    </div>
+
+    <div class="orders-container">
+        <!-- قسم الطلبات الجديدة -->
+        <div class="column">
+            <div class="column-header new-header">
+                <i class="fas fa-bell animate__animated animate__swing animate__infinite"></i> طلبات جديدة
+            </div>
+            <div id="newList" class="orders-list"></div>
+        </div>
+
+        <!-- قسم جاري التحضير -->
+        <div class="column">
+            <div class="column-header prep-header">
+                <i class="fas fa-fire-alt"></i> في المطبخ (جاري)
+            </div>
+            <div id="prepList" class="orders-list"></div>
+        </div>
+    </div>
+
+    <!-- مودال تفاصيل الطلب -->
+    <div class="modal" id="orderModal">
+        <div class="modal-content" id="modalContent"></div>
+    </div>
+
+    <script>
+        // كائن التعامل مع البيانات المحدث ليعمل مع Firebase Realtime Database
+        const DB = {
+            // إرسال بيانات جديدة (مثل طلب جديد أو رسالة شات)
+            push: (path, item) => {
+                const reference = window.dbRef(window.db, path);
+                return window.dbPush(reference, item);
+            },
+
+            // تحديث بيانات موجودة (مثل تغيير حالة الطلب)
+            update: (path, updates) => {
+                const reference = window.dbRef(window.db, path);
+                return window.dbUpdate(reference, updates);
+            },
+
+            // حذف بيانات
+            remove: (path) => {
+                const reference = window.dbRef(window.db, path);
+                return window.dbRemove(reference);
+            },
+
+            // الميزة الأهم: الاستماع للبيانات في الوقت الفعلي (Real-time)
+            listen: (path, callback) => {
+                const reference = window.dbRef(window.db, path);
+                window.dbOnValue(reference, (snapshot) => {
+                    const data = snapshot.val() || {};
+                    callback(data);
+                });
+            }
+        };
+
+        // مراقبة الطلبات: أي طلب جديد سيظهر فوراً عند المطبخ
+        DB.listen('orders', (data) => {
+            renderOrders(data);
+        });
+
+        function renderOrders(allOrders) {
+            const newList = document.getElementById('newList');
+            const prepList = document.getElementById('prepList');
+            const alarm = document.getElementById('alarmSound');
+
+            newList.innerHTML = '';
+            prepList.innerHTML = '';
+            let playAlarm = false;
+
+            // ترتيب الطلبات من الأحدث
+            const sortedKeys = Object.keys(allOrders).sort((a, b) => allOrders[b].timestamp - allOrders[a].timestamp);
+
+            sortedKeys.forEach(id => {
+                const order = allOrders[id];
+                const time = new Date(order.timestamp).toLocaleTimeString('ar-EG', {hour:'2-digit', minute:'2-digit'});
+
+                // إنشاء الكاريد
+                const card = `
+                    <div class="order-card ${order.status === 'pending' || order.status === 'new' ? 'priority' : ''}" onclick="openOrder('${id}')">
+                        <div class="ping"></div>
+                        <div class="order-meta">
+                            <span>#${id.slice(-4)}</span>
+                            <span>${time}</span>
+                        </div>
+                        <div class="cust-name">${order.customerName}</div>
+                        <div class="order-items-preview">
+                            ${order.items.map(i => i.name).join(' ، ')}
+                        </div>
+                        <div style="text-align:left; font-weight:bold; color:var(--blue)">${order.total} ج.م</div>
+                    </div>
+                `;
+
+                if (order.status === 'pending' || order.status === 'new') {
+                    newList.innerHTML += card;
+                    if (!order.seenByKitchen) playAlarm = true; // تنبيه إذا كان هناك طلب لم يُفتح بعد
+                } else if (order.status === 'processing') {
+                    prepList.innerHTML += card;
+                }
+            });
+
+            if (playAlarm) {
+                alarm.play().catch(() => console.log("انتظر تفاعل المستخدم لتشغيل الصوت"));
+            } else {
+                alarm.pause();
+                alarm.currentTime = 0;
+            }
+        }
+
+        window.openOrder = function(id) {
+            // تحديث حالة "شوهد" لإيقاف الجرس
+            DB.update('orders/' + id, { seenByKitchen: true });
+
+            // Get the order data from the listener
+            DB.listen('orders', (allOrders) => {
+                const order = allOrders[id];
+                if (!order) return;
+
+                const modal = document.getElementById('orderModal');
+                const content = document.getElementById('modalContent');
+
+                let itemsHtml = order.items.map(i => `
+                    <div class="item-row">
+                        <span>${i.count}x <strong>${i.name}</strong> <br> <small>${i.variant ? i.variant.bread : ''}</small></span>
+                        <span>${i.variant ? i.variant.price : i.price} ج</span>
+                    </div>
+                `).join('');
+
+                content.innerHTML = `
+                    <div class="modal-header">
+                        <h2>طلب #${id.slice(-4)}</h2>
+                        <p>${order.customerName} | ${order.phone}</p>
+                    </div>
+                    <div class="modal-body">
+                        <div style="margin-bottom:15px; border-bottom:2px solid #eee; padding-bottom:10px;">
+                            <strong>العنوان:</strong> ${order.address}
+                        </div>
+                        ${itemsHtml}
+                        <div style="font-size:1.3rem; font-weight:900; text-align:center; margin:20px 0; color:var(--red);">
+                            الإجمالي: ${order.total} ج.م
+                        </div>
+
+                        ${order.status === 'pending' || order.status === 'new' ?
+                            `<button class="btn-action btn-accept" onclick="changeStatus('${id}', 'processing')">بدء التحضير الآن</button>` :
+                            `<button class="btn-action btn-done" onclick="changeStatus('${id}', 'completed')">تم التحضير - تسليم</button>`
+                        }
+                        <button class="btn-action btn-cancel" onclick="closeModal()">إغلاق</button>
+                    </div>
+                `;
+                modal.style.display = 'flex';
+            });
+        };
+
+        window.changeStatus = function(id, status) {
+            DB.update('orders/' + id, { status: status, handledBy: 'المطبخ' });
+            closeModal();
+        };
+
+        window.closeModal = function() {
+            document.getElementById('orderModal').style.display = 'none';
+        };
+
+        // محاولة تشغيل الصوت عند أول نقرة في الصفحة (لقيود المتصفح)
+        document.body.addEventListener('click', () => {
+            const alarm = document.getElementById('alarmSound');
+            if(alarm.paused && document.querySelectorAll('.priority').length > 0) {
+                // alarm.play();
+            }
+        }, {once: true});
+
+    </script>
+</body>
+</html>
